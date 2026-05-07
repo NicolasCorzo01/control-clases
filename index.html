@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Clases</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f6f2;--surface:#ffffff;--surface2:#f0efe9;
+  --border:#e2e0d8;--border2:#ccc9be;
+  --txt:#1a1916;--txt2:#6b6860;--txt3:#9b9890;
+  --accent:#2563eb;--accent-light:#eff6ff;--accent-txt:#1d4ed8;
+  --green:#16a34a;--green-light:#f0fdf4;
+  --amber:#d97706;--amber-light:#fffbeb;
+  --red:#dc2626;--red-light:#fef2f2;
+  --radius:10px;--radius-sm:6px;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--txt);font-size:14px;min-height:100vh}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100}
+.topbar-icon{width:34px;height:34px;background:#2563eb;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.topbar-title{font-size:16px;font-weight:600;letter-spacing:-.3px}
+.topbar-sub{font-size:12px;color:var(--txt2)}
+.container{max-width:740px;margin:0 auto;padding:24px 16px}
+
+.tabs{display:flex;gap:4px;background:var(--surface2);border-radius:var(--radius);padding:4px;margin-bottom:20px;border:1px solid var(--border)}
+.tab{flex:1;padding:9px 12px;border:none;background:transparent;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font);font-size:13px;font-weight:500;color:var(--txt2);transition:all .15s}
+.tab.active{background:var(--surface);color:var(--txt);box-shadow:var(--shadow)}
+.tab:hover:not(.active){color:var(--txt)}
+
+.panel{display:none}.panel.active{display:block}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px}
+.card-title{font-size:12px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:16px}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row.single{grid-template-columns:1fr}
+.form-row.triple{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:520px){.form-row,.form-row.triple{grid-template-columns:1fr}}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--txt2);margin-bottom:5px}
+.field input,.field select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font);font-size:13px;background:var(--surface);color:var(--txt);outline:none;transition:border .15s}
+.field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.field input[readonly]{background:var(--surface2);color:var(--txt2);cursor:default}
+
+.date-field{position:relative}
+.date-input-wrap{display:flex;gap:6px;align-items:center}
+.date-display{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);color:var(--txt);cursor:pointer;transition:border .15s;user-select:none;line-height:1.4}
+.date-display:hover{border-color:var(--border2)}
+.date-display.empty{color:var(--txt3)}
+.cal-btn{padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface2);cursor:pointer;font-size:15px;color:var(--txt2);transition:all .15s;flex-shrink:0}
+.cal-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+.calendar-popup{position:absolute;top:calc(100% + 6px);left:0;z-index:999;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 24px rgba(0,0,0,.13);padding:16px;width:288px;display:none}
+.calendar-popup.open{display:block}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-nav-btn{background:none;border:1px solid var(--border);border-radius:var(--radius-sm);width:30px;height:30px;cursor:pointer;font-size:15px;color:var(--txt2);display:flex;align-items:center;justify-content:center;transition:all .15s}
+.cal-nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+.cal-month-label{font-size:13px;font-weight:600;color:var(--txt)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.cal-dow{font-size:10px;font-weight:600;color:var(--txt3);text-align:center;padding:4px 0;text-transform:uppercase}
+.cal-day{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;color:var(--txt);transition:all .15s;border:none;background:transparent;font-family:var(--font)}
+.cal-day:hover{background:var(--surface2)}
+.cal-day.today{font-weight:600;color:var(--accent)}
+.cal-day.selected{background:var(--accent);color:white;font-weight:600}
+.cal-day.other-month{color:var(--txt3)}
+
+.valor-preview{background:var(--green-light);border:1px solid #bbf7d0;border-radius:var(--radius-sm);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+.valor-label{font-size:12px;color:var(--green);font-weight:500}
+.valor-amount{font-size:20px;font-weight:600;color:var(--green);font-family:var(--mono)}
+
+.btn-primary{width:100%;padding:11px;background:var(--accent);color:white;border:none;border-radius:var(--radius-sm);font-family:var(--font);font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;margin-top:14px}
+.btn-primary:hover{background:#1d4ed8}
+.btn-primary:active{transform:scale(.99)}
+
+.records-list{display:flex;flex-direction:column;gap:8px}
+.record-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:13px 16px;display:flex;align-items:center;gap:12px;transition:border .15s}
+.record-item:hover{border-color:var(--border2)}
+.record-date{font-family:var(--mono);font-size:12px;color:var(--txt2);width:82px;flex-shrink:0}
+.record-info{flex:1;min-width:0}
+.record-name{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.record-meta{font-size:11px;color:var(--txt2);margin-top:2px}
+.record-valor{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--green);flex-shrink:0}
+.record-del{background:none;border:none;cursor:pointer;color:var(--txt3);font-size:14px;padding:4px 7px;border-radius:4px;transition:all .15s}
+.record-del:hover{color:var(--red);background:var(--red-light)}
+
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
+.badge-fija{background:#eff6ff;color:#1d4ed8}
+.badge-extra{background:#fef9c3;color:#854d0e}
+
+.empty-state{text-align:center;padding:40px;color:var(--txt2)}
+.empty-state .ei{font-size:32px;margin-bottom:10px}
+.empty-state p{font-size:13px}
+
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center}
+.summary-num{font-size:24px;font-weight:600;font-family:var(--mono)}
+.summary-lbl{font-size:11px;color:var(--txt2);margin-top:3px}
+.summary-card.highlight .summary-num{color:var(--green)}
+
+.filter-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.filter-btn{padding:6px 12px;border:1px solid var(--border);border-radius:20px;background:var(--surface);font-family:var(--font);font-size:12px;cursor:pointer;color:var(--txt2);transition:all .15s}
+.filter-btn.active{background:var(--accent);color:white;border-color:var(--accent)}
+
+.export-area{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-family:var(--mono);font-size:11px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;color:var(--txt2);line-height:1.6}
+.btn-secondary{padding:9px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;color:var(--txt);transition:all .15s;margin-top:10px;margin-right:8px}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.msg{padding:9px 13px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;margin-top:10px;display:none}
+.msg.show{display:block}
+.msg.success{background:var(--green-light);color:var(--green);border:1px solid #bbf7d0}
+.msg.error{background:var(--red-light);color:var(--red);border:1px solid #fecaca}
+
+.help-box{background:#fffbeb;border:1px solid #fde68a;border-radius:var(--radius);padding:16px;margin-bottom:14px;font-size:13px;line-height:1.7;color:#78350f}
+.help-box strong{display:block;font-size:13px;margin-bottom:6px;color:#92400e}
+.help-box ol{padding-left:18px}
+.help-box li{margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-icon">📚</div>
+  <div>
+    <div class="topbar-title">Control de Clases</div>
+    <div class="topbar-sub">Registro de sesiones y pagos</div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- ── Barra de sync ── -->
+  <div id="sync-status-bar" style="display:none;align-items:center;justify-content:space-between;background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:10px 16px;margin-bottom:14px;gap:10px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div id="sync-dot" style="width:9px;height:9px;border-radius:50%;background:#9b9890;flex-shrink:0"></div>
+      <span id="sync-label" style="font-size:12px;color:#6b6860">Sin conectar</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="btn-sync-all" onclick="syncAll()" style="display:none;padding:6px 14px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer">⬆ Sincronizar todo</button>
+      <button onclick="showSyncModal()" style="padding:6px 12px;background:#f0efe9;border:1px solid #e2e0d8;border-radius:6px;font-size:12px;cursor:pointer;color:#6b6860">⚙ Config</button>
+    </div>
+  </div>
+  <div class="msg" id="msg-sync" style="margin-bottom:10px"></div>
+
+  <!-- ── Modal de configuración Sheets ── -->
+  <div id="sync-modal" style="display:flex;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2000;align-items:center;justify-content:center;padding:16px">
+    <div style="background:#fff;border-radius:12px;padding:24px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">🔗 Conectar Google Sheets</div>
+      <p style="font-size:13px;color:#6b6860;margin-bottom:16px;line-height:1.6">Sigue los pasos del archivo <strong>google_apps_script.js</strong> para obtener la URL. Luego pégala aquí:</p>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:500;color:#6b6860;display:block;margin-bottom:5px">URL del Apps Script desplegado</label>
+        <input id="input-script-url" type="url" placeholder="https://script.google.com/macros/s/..." style="width:100%;padding:9px 12px;border:1px solid #e2e0d8;border-radius:6px;font-size:13px;outline:none">
+      </div>
+      <div class="msg" id="msg-url"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button onclick="testConnection()" style="flex:1;padding:10px;background:#2563eb;color:white;border:none;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer">Probar y guardar conexión</button>
+        <button onclick="closeSyncModal()" style="padding:10px 16px;background:#f0efe9;border:1px solid #e2e0d8;border-radius:6px;font-size:13px;cursor:pointer">Cancelar</button>
+      </div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('fijas')">Clases Fijas</button>
+    <button class="tab" onclick="switchTab('extras')">Clases Extras</button>
+    <button class="tab" onclick="switchTab('historial')">Historial</button>
+    <button class="tab" onclick="switchTab('pagos')">💰 Pagos</button>
+    <button class="tab" onclick="switchTab('exportar')">Exportar</button>
+  </div>
+
+  <!-- ══ FIJAS ══ -->
+  <div class="panel active" id="panel-fijas">
+    <div class="card">
+      <div class="card-title">Nueva clase fija</div>
+      <div class="form-row">
+        <div class="field date-field" id="df-fijas">
+          <label>Fecha</label>
+          <div class="date-input-wrap">
+            <div class="date-display empty" id="dd-fijas" onclick="toggleCal('fijas')">Seleccionar fecha...</div>
+            <button class="cal-btn" onclick="toggleCal('fijas')">📅</button>
+          </div>
+          <div class="calendar-popup" id="cal-fijas"></div>
+          <input type="hidden" id="fecha-fija">
+        </div>
+        <div class="field">
+          <label>Grupo</label>
+          <select id="grupo-select" onchange="updateGrupoInfo()">
+            <option value="">— Selecciona grupo —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row triple" id="grupo-info" style="display:none">
+        <div class="field">
+          <label>Materia</label>
+          <input type="text" id="info-materia" readonly>
+        </div>
+        <div class="field">
+          <label>Minutos reales</label>
+          <input type="number" id="info-minutos" min="1" oninput="calcValor()">
+        </div>
+        <div class="field">
+          <label>Valor calculado</label>
+          <input type="text" id="info-valor" readonly>
+        </div>
+      </div>
+      <div class="valor-preview" id="valor-preview" style="display:none">
+        <span class="valor-label">Valor a cobrar</span>
+        <span class="valor-amount" id="valor-final">$0</span>
+      </div>
+      <button class="btn-primary" onclick="guardarFija()">Registrar clase fija</button>
+      <div class="msg" id="msg-fija"></div>
+    </div>
+  </div>
+
+  <!-- ══ EXTRAS ══ -->
+  <div class="panel" id="panel-extras">
+    <div class="card">
+      <div class="card-title">Nueva clase extra</div>
+      <div class="form-row">
+        <div class="field date-field" id="df-extras">
+          <label>Fecha</label>
+          <div class="date-input-wrap">
+            <div class="date-display empty" id="dd-extras" onclick="toggleCal('extras')">Seleccionar fecha...</div>
+            <button class="cal-btn" onclick="toggleCal('extras')">📅</button>
+          </div>
+          <div class="calendar-popup" id="cal-extras"></div>
+          <input type="hidden" id="fecha-extra">
+        </div>
+        <div class="field">
+          <label>Nombre del estudiante</label>
+          <input type="text" id="extra-nombre" placeholder="Nombre completo">
+        </div>
+      </div>
+      <div class="form-row triple">
+        <div class="field">
+          <label>Materia / Tema</label>
+          <input type="text" id="extra-materia" placeholder="Ej: Scratch, Minecraft...">
+        </div>
+        <div class="field">
+          <label>Minutos reales</label>
+          <input type="number" id="extra-minutos" value="60" min="1" oninput="calcValorExtra()">
+        </div>
+        <div class="field">
+          <label>Notas</label>
+          <input type="text" id="extra-notas" placeholder="Opcional">
+        </div>
+      </div>
+      <div class="valor-preview">
+        <span class="valor-label">Valor a cobrar</span>
+        <span class="valor-amount" id="valor-extra">$21,500</span>
+      </div>
+      <button class="btn-primary" onclick="guardarExtra()">Registrar clase extra</button>
+      <div class="msg" id="msg-extra"></div>
+    </div>
+  </div>
+
+  <!-- ══ HISTORIAL ══ -->
+  <div class="panel" id="panel-historial">
+    <div class="summary-grid">
+      <div class="summary-card"><div class="summary-num" id="s-fijas">0</div><div class="summary-lbl">Clases fijas</div></div>
+      <div class="summary-card"><div class="summary-num" id="s-extras">0</div><div class="summary-lbl">Clases extras</div></div>
+      <div class="summary-card highlight"><div class="summary-num" id="s-total">$0</div><div class="summary-lbl">Total a cobrar</div></div>
+    </div>
+    <div class="filter-row">
+      <button class="filter-btn active" onclick="setFilter('todos',this)">Todos</button>
+      <button class="filter-btn" onclick="setFilter('fija',this)">Solo fijas</button>
+      <button class="filter-btn" onclick="setFilter('extra',this)">Solo extras</button>
+    </div>
+    <div id="historial-list"></div>
+  </div>
+
+
+  <!-- ══ PAGOS ══ -->
+  <div class="panel" id="panel-pagos">
+
+    <!-- Resumen cards -->
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px" id="pagos-summary-grid">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:20px;font-weight:600;font-family:var(--mono);color:#1d4ed8" id="ps-esperado">$0</div>
+        <div style="font-size:11px;color:#6b6860;margin-top:3px">Lo que deberían pagarte</div>
+      </div>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:20px;font-weight:600;font-family:var(--mono);color:#16a34a" id="ps-pagado">$0</div>
+        <div style="font-size:11px;color:#6b6860;margin-top:3px">Lo que te pagaron (reporte)</div>
+      </div>
+      <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:10px;padding:14px;text-align:center" id="ps-diff-card">
+        <div style="font-size:20px;font-weight:600;font-family:var(--mono)" id="ps-diff">$0</div>
+        <div style="font-size:11px;color:#6b6860;margin-top:3px" id="ps-diff-label">Diferencia</div>
+      </div>
+      <div style="background:#f0efe9;border:1px solid #e2e0d8;border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:20px;font-weight:600;font-family:var(--mono);color:#6b6860" id="ps-clases-rep">0</div>
+        <div style="font-size:11px;color:#6b6860;margin-top:3px">Clases en el reporte</div>
+      </div>
+    </div>
+
+    <!-- Importar CSV -->
+    <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:20px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:#6b6860;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">Importar reporte de pagos (CSV)</div>
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px;font-size:12px;color:#78350f;margin-bottom:14px;line-height:1.6">
+        📂 Sube el CSV que te envía la empresa. La app lo leerá automáticamente y comparará con lo que deberían pagarte según tus clases registradas.
+      </div>
+      <label style="display:block;border:2px dashed #e2e0d8;border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:border .15s" id="csv-drop-zone">
+        <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="importarCSV(event)">
+        <div style="font-size:24px;margin-bottom:6px">📄</div>
+        <div style="font-size:13px;font-weight:500;color:#1a1916">Toca aquí para seleccionar el CSV</div>
+        <div style="font-size:11px;color:#9b9890;margin-top:3px">Formato: reporte exportado de la plataforma</div>
+      </label>
+      <div id="csv-filename" style="font-size:12px;color:#16a34a;margin-top:8px;display:none"></div>
+      <div class="msg" id="msg-csv"></div>
+    </div>
+
+    <!-- Tabla comparación por grupo -->
+    <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:20px;margin-bottom:14px" id="comp-section" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:12px;font-weight:600;color:#6b6860;text-transform:uppercase;letter-spacing:.6px">Comparación por grupo</div>
+        <div style="font-size:11px;color:#9b9890" id="comp-periodo"></div>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px" id="comp-table">
+          <thead>
+            <tr style="background:#f0efe9">
+              <th style="padding:9px 12px;text-align:left;border-bottom:2px solid #e2e0d8;font-weight:600;color:#6b6860">Grupo</th>
+              <th style="padding:9px 12px;text-align:center;border-bottom:2px solid #e2e0d8;font-weight:600;color:#6b6860"># Clases</th>
+              <th style="padding:9px 12px;text-align:right;border-bottom:2px solid #e2e0d8;font-weight:600;color:#6b6860">Pagado (reporte)</th>
+              <th style="padding:9px 12px;text-align:right;border-bottom:2px solid #e2e0d8;font-weight:600;color:#6b6860">Esperado</th>
+              <th style="padding:9px 12px;text-align:right;border-bottom:2px solid #e2e0d8;font-weight:600;color:#6b6860">Diferencia</th>
+              <th style="padding:9px 12px;text-align:center;border-bottom:2px solid #e2e0d8;font-weight:600;color:#6b6860">Estado</th>
+            </tr>
+          </thead>
+          <tbody id="comp-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Detalle de clases del reporte -->
+    <div style="background:#fff;border:1px solid #e2e0d8;border-radius:10px;padding:20px" id="detalle-section" style="display:none">
+      <div style="font-size:12px;font-weight:600;color:#6b6860;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">Detalle de clases en el reporte</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px" id="detalle-table">
+          <thead>
+            <tr style="background:#f0efe9">
+              <th style="padding:7px 10px;text-align:left;border-bottom:2px solid #e2e0d8;color:#6b6860">Fecha</th>
+              <th style="padding:7px 10px;text-align:left;border-bottom:2px solid #e2e0d8;color:#6b6860">Grupo</th>
+              <th style="padding:7px 10px;text-align:center;border-bottom:2px solid #e2e0d8;color:#6b6860">Min</th>
+              <th style="padding:7px 10px;text-align:right;border-bottom:2px solid #e2e0d8;color:#6b6860">Pagado</th>
+              <th style="padding:7px 10px;text-align:center;border-bottom:2px solid #e2e0d8;color:#6b6860">Tipo</th>
+            </tr>
+          </thead>
+          <tbody id="detalle-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ EXPORTAR ══ -->
+  <div class="panel" id="panel-exportar">
+    <div class="help-box">
+      <strong>Cómo pegar en Google Sheets</strong>
+      <ol>
+        <li>Haz clic en <strong>Copiar CSV</strong> abajo</li>
+        <li>Abre Google Sheets y crea una hoja nueva</li>
+        <li>Ve a <strong>Archivo → Importar</strong></li>
+        <li>Selecciona la pestaña <strong>Pegar</strong>, pega el texto y haz clic en Importar</li>
+      </ol>
+    </div>
+    <div class="card">
+      <div class="card-title">Datos exportables</div>
+      <div class="export-area" id="export-csv">Sin registros aún</div>
+      <div style="margin-top:10px">
+        <button class="btn-secondary" onclick="copiarCSV()">📋 Copiar CSV</button>
+        <button class="btn-secondary" onclick="descargarCSV()">⬇ Descargar CSV</button>
+      </div>
+      <div class="msg" id="msg-export"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const VALOR_MIN = 21500 / 60;
+const GRUPOS = [
+  {id:"COL553_IND",          materia:"Minecraft",   mins:60},
+  {id:"COL537_IND",          materia:"Minecraft",   mins:60},
+  {id:"PRM_COL10874_MA-17",  materia:"Scratch",     mins:60},
+  {id:"PRM_COL10740_JU-18",  materia:"Minecraft",   mins:60},
+  {id:"PRM_COL10738_LU-17",  materia:"Minecraft",   mins:60},
+  {id:"COL464_IND",          materia:"Scratch",     mins:60},
+  {id:"PRM_COL10321_DO-9",   materia:"Scratch",     mins:60},
+  {id:"COL426_IND",          materia:"Scratch",     mins:60},
+  {id:"PRM_COL9267_DO-10",   materia:"Scratch",     mins:60},
+  {id:"PRM_COL10641_LU-17_MI-17", materia:"Funtech",mins:30},
+  {id:"COL342_IND",          materia:"Math Lvl 1",  mins:30},
+  {id:"COL7115_JU-17",       materia:"Funtech",     mins:30},
+  {id:"COL482_IND",          materia:"Math Lvl 3",  mins:30},
+  {id:"PRM_COL_M9939_LU-15", materia:"Math Lvl 3",  mins:40}
+];
+
+let records = JSON.parse(localStorage.getItem('clases_v1') || '[]');
+let activeFilter = 'todos';
+const calState = {
+  fijas: {month: new Date().getMonth(), year: new Date().getFullYear()},
+  extras: {month: new Date().getMonth(), year: new Date().getFullYear()}
+};
+
+function save() { localStorage.setItem('clases_v1', JSON.stringify(records)); }
+function fmt(v) { return '$' + Math.round(v).toLocaleString('es-CO'); }
+function fmtDate(iso) { if (!iso) return ''; const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; }
+
+// Llenar select de grupos
+const sel = document.getElementById('grupo-select');
+GRUPOS.forEach(g => {
+  const o = document.createElement('option');
+  o.value = g.id;
+  const tag = g.mins === 60 ? '60min' : g.mins === 30 ? '30min' : '40min';
+  o.textContent = `[${tag}] ${g.id} — ${g.materia}`;
+  sel.appendChild(o);
+});
+
+// Inicializar valor extra
+calcValorExtra();
+
+// ── Calendario ──────────────────────────────────────────
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function buildCal(ctx) {
+  const s = calState[ctx];
+  const popup = document.getElementById('cal-' + ctx);
+  const today = new Date();
+  const first = new Date(s.year, s.month, 1);
+  const lastDay = new Date(s.year, s.month + 1, 0).getDate();
+  const startDow = (first.getDay() + 6) % 7;
+  const selVal = document.getElementById(ctx === 'fijas' ? 'fecha-fija' : 'fecha-extra').value;
+
+  let html = `<div class="cal-nav">
+    <button class="cal-nav-btn" onclick="moveCal('${ctx}',-1)">&#8249;</button>
+    <span class="cal-month-label">${MONTHS[s.month]} ${s.year}</span>
+    <button class="cal-nav-btn" onclick="moveCal('${ctx}',1)">&#8250;</button>
+  </div><div class="cal-grid">`;
+  ['Lu','Ma','Mi','Ju','Vi','Sa','Do'].forEach(d => html += `<div class="cal-dow">${d}</div>`);
+  for (let i = 0; i < startDow; i++) html += `<div></div>`;
+  for (let d = 1; d <= lastDay; d++) {
+    const iso = `${s.year}-${String(s.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = d === today.getDate() && s.month === today.getMonth() && s.year === today.getFullYear();
+    const isSel = iso === selVal;
+    html += `<button class="cal-day${isToday ? ' today' : ''}${isSel ? ' selected' : ''}" onclick="selectDate('${ctx}','${iso}')">${d}</button>`;
+  }
+  html += '</div>';
+  popup.innerHTML = html;
+}
+
+function toggleCal(ctx) {
+  const popup = document.getElementById('cal-' + ctx);
+  const isOpen = popup.classList.contains('open');
+  document.querySelectorAll('.calendar-popup').forEach(p => p.classList.remove('open'));
+  if (!isOpen) { buildCal(ctx); popup.classList.add('open'); }
+}
+
+function moveCal(ctx, dir) {
+  const s = calState[ctx];
+  s.month += dir;
+  if (s.month > 11) { s.month = 0; s.year++; }
+  if (s.month < 0)  { s.month = 11; s.year--; }
+  buildCal(ctx);
+}
+
+function selectDate(ctx, iso) {
+  const isFija = ctx === 'fijas';
+  document.getElementById(isFija ? 'fecha-fija' : 'fecha-extra').value = iso;
+  const dd = document.getElementById('dd-' + ctx);
+  dd.textContent = fmtDate(iso);
+  dd.classList.remove('empty');
+  document.getElementById('cal-' + ctx).classList.remove('open');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.date-field'))
+    document.querySelectorAll('.calendar-popup').forEach(p => p.classList.remove('open'));
+});
+
+// ── Formulario fijas ─────────────────────────────────────
+function updateGrupoInfo() {
+  const id = document.getElementById('grupo-select').value;
+  const g = GRUPOS.find(x => x.id === id);
+  const info = document.getElementById('grupo-info');
+  const vp = document.getElementById('valor-preview');
+  if (!g) { info.style.display = 'none'; vp.style.display = 'none'; return; }
+  info.style.display = 'grid';
+  vp.style.display = 'flex';
+  document.getElementById('info-materia').value = g.materia;
+  document.getElementById('info-minutos').value = g.mins;
+  calcValor();
+}
+
+function calcValor() {
+  const mins = parseFloat(document.getElementById('info-minutos').value) || 0;
+  const v = mins * VALOR_MIN;
+  document.getElementById('info-valor').value = fmt(v);
+  document.getElementById('valor-final').textContent = fmt(v);
+}
+
+function calcValorExtra() {
+  const mins = parseFloat(document.getElementById('extra-minutos').value) || 0;
+  document.getElementById('valor-extra').textContent = fmt(mins * VALOR_MIN);
+}
+
+// ── Guardar ───────────────────────────────────────────────
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text; el.className = `msg show ${type}`;
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function guardarFija() {
+  const fecha = document.getElementById('fecha-fija').value;
+  const id = document.getElementById('grupo-select').value;
+  if (!fecha) { showMsg('msg-fija', 'Selecciona una fecha', 'error'); return; }
+  if (!id)    { showMsg('msg-fija', 'Selecciona un grupo', 'error'); return; }
+  const g = GRUPOS.find(x => x.id === id);
+  const mins = parseFloat(document.getElementById('info-minutos').value) || g.mins;
+  records.push({ tipo:'fija', fecha, grupoId:id, materia:g.materia, mins, valor:Math.round(mins*VALOR_MIN), ts:Date.now() });
+  save();
+  showMsg('msg-fija', 'Clase registrada correctamente ✓', 'success');
+  document.getElementById('fecha-fija').value = '';
+  const dd = document.getElementById('dd-fijas');
+  dd.textContent = 'Seleccionar fecha...'; dd.classList.add('empty');
+  document.getElementById('grupo-select').value = '';
+  document.getElementById('grupo-info').style.display = 'none';
+  document.getElementById('valor-preview').style.display = 'none';
+}
+
+function guardarExtra() {
+  const fecha   = document.getElementById('fecha-extra').value;
+  const nombre  = document.getElementById('extra-nombre').value.trim();
+  const materia = document.getElementById('extra-materia').value.trim();
+  const mins    = parseFloat(document.getElementById('extra-minutos').value) || 0;
+  if (!fecha)   { showMsg('msg-extra', 'Selecciona una fecha', 'error'); return; }
+  if (!nombre)  { showMsg('msg-extra', 'Ingresa el nombre del estudiante', 'error'); return; }
+  if (!materia) { showMsg('msg-extra', 'Ingresa la materia', 'error'); return; }
+  records.push({ tipo:'extra', fecha, nombre, materia, mins, notas: document.getElementById('extra-notas').value.trim(), valor:Math.round(mins*VALOR_MIN), ts:Date.now() });
+  save();
+  showMsg('msg-extra', 'Clase extra registrada ✓', 'success');
+  document.getElementById('fecha-extra').value = '';
+  const dd = document.getElementById('dd-extras');
+  dd.textContent = 'Seleccionar fecha...'; dd.classList.add('empty');
+  ['extra-nombre','extra-materia','extra-notas'].forEach(i => document.getElementById(i).value = '');
+  document.getElementById('extra-minutos').value = 60;
+  calcValorExtra();
+}
+
+// ── Historial ─────────────────────────────────────────────
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderHistorial();
+}
+
+function renderHistorial() {
+  let data = [...records];
+  if (activeFilter !== 'todos') data = data.filter(r => r.tipo === activeFilter);
+  data.sort((a,b) => b.fecha.localeCompare(a.fecha) || b.ts - a.ts);
+
+  const total = records.reduce((s,r) => s + r.valor, 0);
+  document.getElementById('s-fijas').textContent  = records.filter(r => r.tipo === 'fija').length;
+  document.getElementById('s-extras').textContent = records.filter(r => r.tipo === 'extra').length;
+  document.getElementById('s-total').textContent  = fmt(total);
+
+  const list = document.getElementById('historial-list');
+  if (!data.length) {
+    list.innerHTML = '<div class="empty-state"><div class="ei">📋</div><p>Sin registros en esta categoría</p></div>';
+    return;
+  }
+  list.innerHTML = '<div class="records-list">' + data.map(r => {
+    const idx = records.indexOf(r);
+    const label = r.tipo === 'fija' ? `Grupo ${r.grupoId} — ${r.materia}` : r.nombre;
+    const meta  = r.tipo === 'fija' ? `${r.mins} min · Clase fija` : `${r.mins} min · Extra · ${r.materia}`;
+    const badge = r.tipo === 'fija' ? '<span class="badge badge-fija">Fija</span>' : '<span class="badge badge-extra">Extra</span>';
+    return `<div class="record-item">
+      <div class="record-date">${fmtDate(r.fecha)}</div>
+      <div class="record-info">
+        <div class="record-name">${badge} ${label}</div>
+        <div class="record-meta">${meta}</div>
+      </div>
+      <div class="record-valor">${fmt(r.valor)}</div>
+      <button class="record-del" onclick="deleteRecord(${idx})" title="Eliminar">✕</button>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function deleteRecord(i) {
+  if (!confirm('¿Eliminar este registro?')) return;
+  records.splice(i, 1); save(); renderHistorial();
+}
+
+// ── Exportar ──────────────────────────────────────────────
+function getCSV() {
+  if (!records.length) return null;
+  const sorted = [...records].sort((a,b) => a.fecha.localeCompare(b.fecha));
+  let csv = 'Tipo,Fecha,ID Grupo / Estudiante,Materia,Minutos,Valor COP,Notas\n';
+  sorted.forEach(r => {
+    const id = r.tipo === 'fija' ? r.grupoId : r.nombre;
+    csv += `${r.tipo === 'fija' ? 'Fija' : 'Extra'},${fmtDate(r.fecha)},"${id}","${r.materia || ''}",${r.mins},${r.valor},"${r.notas || ''}"\n`;
+  });
+  return csv;
+}
+
+function renderExport() {
+  const csv = getCSV();
+  document.getElementById('export-csv').textContent = csv || 'Sin registros aún';
+}
+
+function copiarCSV() {
+  const csv = getCSV();
+  if (!csv) { showMsg('msg-export', 'No hay datos para exportar', 'error'); return; }
+  navigator.clipboard.writeText(csv)
+    .then(() => showMsg('msg-export', 'CSV copiado al portapapeles ✓', 'success'))
+    .catch(() => showMsg('msg-export', 'Copia manualmente el texto de arriba', 'error'));
+}
+
+function descargarCSV() {
+  const csv = getCSV();
+  if (!csv) { showMsg('msg-export', 'No hay datos para exportar', 'error'); return; }
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = `clases_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i) => b.classList.toggle('active', ['fijas','extras','historial','exportar'][i] === t));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + t).classList.add('active');
+  if (t === 'historial') renderHistorial();
+  if (t === 'exportar')  renderExport();
+}
+
+// ─── Importar CSV de reporte ─────────────────────────────────
+let reporteData = [];
+
+const MIS_GRUPOS = ['COL553_IND','COL537_IND','PRM_COL10874_MA-17','PRM_COL10740_JU-18',
+  'PRM_COL10738_LU-17','COL464_IND','PRM_COL10321_DO-9','COL426_IND',
+  'PRM_COL9267_DO-10','PRM_COL10641_LU-17_MI-17','COL342_IND','COL7115_JU-17',
+  'COL482_IND','PRM_COL_M9939_LU-15'];
+
+// Valor esperado por grupo según minutos de la plataforma
+const VALOR_ESPERADO_MIN = 21500 / 60;
+
+function importarCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  document.getElementById('csv-filename').style.display = 'none';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const lines = e.target.result.split('\n').filter(l => l.trim());
+      // Detectar encabezados (primera línea con datos reales)
+      let startIdx = 0;
+      // Buscar la línea de encabezados
+      for (let i = 0; i < Math.min(5, lines.length); i++) {
+        if (lines[i].toLowerCase().includes('lesson date') || lines[i].toLowerCase().includes('group')) {
+          startIdx = i; break;
+        }
+      }
+      const headers = parseCSVLine(lines[startIdx]).map(h => h.trim().toLowerCase().replace(/^﻿/, ''));
+      const idxDate  = headers.findIndex(h => h.includes('lesson date') || h === 'date');
+      const idxGrp   = headers.findIndex(h => h.includes('group'));
+      const idxLen   = headers.findIndex(h => h.includes('length') || h.includes('min'));
+      const idxRate  = headers.findIndex(h => h.includes('rate') || h.includes('pay') || h.includes('valor'));
+      const idxFmt   = headers.findIndex(h => h.includes('format') || h.includes('type') || h.includes('tipo'));
+
+      if (idxDate < 0 || idxGrp < 0 || idxRate < 0) {
+        showMsg('msg-csv', 'No se reconocieron las columnas del CSV. Verifica que sea el reporte correcto.', 'error');
+        return;
+      }
+
+      reporteData = [];
+      for (let i = startIdx + 1; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        if (!cols || cols.length < 3) continue;
+        const grupo = (cols[idxGrp] || '').trim();
+        const fecha = (cols[idxDate] || '').trim().slice(0,10);
+        const mins  = parseInt(cols[idxLen]) || 60;
+        const rate  = parseInt(cols[idxRate]) || 0;
+        const tipo  = (cols[idxFmt] || '').trim().toLowerCase();
+        if (!fecha || !rate) continue;
+
+        // Determinar si es extra (grupo es URL o tipo es 'extra')
+        const esExtra = tipo === 'extra' || grupo.startsWith('http');
+        reporteData.push({ fecha, grupo: esExtra ? '__extra__' : grupo, mins, rate, tipo, esExtra });
+      }
+
+      document.getElementById('csv-filename').textContent = `✓ ${file.name} — ${reporteData.length} clases cargadas`;
+      document.getElementById('csv-filename').style.display = 'block';
+      showMsg('msg-csv', `Reporte cargado: ${reporteData.length} clases`, 'success');
+      renderComparacion();
+    } catch(err) {
+      showMsg('msg-csv', 'Error al leer el CSV: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; }
+    else if (ch === ',' && !inQuotes) { result.push(current); current = ''; }
+    else { current += ch; }
+  }
+  result.push(current);
+  return result;
+}
+
+function renderComparacion() {
+  if (!reporteData.length) return;
+  document.getElementById('comp-section').style.display  = 'block';
+  document.getElementById('detalle-section').style.display = 'block';
+
+  // Periodo del reporte
+  const fechas = reporteData.map(r => r.fecha).sort();
+  const desde  = fmtDate(fechas[0]);
+  const hasta  = fmtDate(fechas[fechas.length-1]);
+  document.getElementById('comp-periodo').textContent = `${desde} → ${hasta}`;
+
+  // Totales generales del reporte
+  const totalPagado = reporteData.reduce((s,r) => s+r.rate, 0);
+
+  // Agrupar reporte por grupo
+  const porGrupo = {};
+  reporteData.forEach(r => {
+    const key = r.esExtra ? '__extra__' : r.grupo;
+    if (!porGrupo[key]) porGrupo[key] = { clases:0, pagado:0, mins:0 };
+    porGrupo[key].clases++;
+    porGrupo[key].pagado += r.rate;
+    porGrupo[key].mins   += r.mins;
+  });
+
+  // Calcular esperado por grupo (minutos * valor_por_minuto)
+  let totalEsperado = 0;
+  const filas = Object.entries(porGrupo).map(([grupo, datos]) => {
+    // Esperado = suma de (mins * VALOR_MIN) para cada clase de ese grupo
+    const clasesGrupo = reporteData.filter(r => (r.esExtra ? '__extra__' : r.grupo) === grupo);
+    const esperado = Math.round(clasesGrupo.reduce((s,r) => s + r.mins * VALOR_ESPERADO_MIN, 0));
+    totalEsperado += esperado;
+    const diff = datos.pagado - esperado;
+    const label = grupo === '__extra__' ? '⭐ Clases extras' : grupo;
+    const esMio = MIS_GRUPOS.includes(grupo) || grupo === '__extra__';
+    return { grupo: label, clases: datos.clases, pagado: datos.pagado, esperado, diff, esMio };
+  }).sort((a,b) => Math.abs(b.diff) - Math.abs(a.diff));
+
+  // Cards resumen
+  const diff = totalPagado - totalEsperado;
+  document.getElementById('ps-esperado').textContent   = fmt(totalEsperado);
+  document.getElementById('ps-pagado').textContent     = fmt(totalPagado);
+  document.getElementById('ps-diff').textContent       = fmt(Math.abs(diff));
+  document.getElementById('ps-clases-rep').textContent = reporteData.length;
+
+  const diffCard  = document.getElementById('ps-diff-card');
+  const diffLabel = document.getElementById('ps-diff-label');
+  if (diff > 0) {
+    diffCard.style.background = '#f0fdf4'; diffCard.style.borderColor = '#bbf7d0';
+    document.getElementById('ps-diff').style.color = '#16a34a';
+    diffLabel.textContent = '✅ Te pagaron de más';
+  } else if (diff < 0) {
+    diffCard.style.background = '#fef2f2'; diffCard.style.borderColor = '#fecaca';
+    document.getElementById('ps-diff').style.color = '#dc2626';
+    diffLabel.textContent = '🔴 Te deben esta diferencia';
+  } else {
+    diffCard.style.background = '#f0fdf4'; diffCard.style.borderColor = '#bbf7d0';
+    document.getElementById('ps-diff').style.color = '#16a34a';
+    diffLabel.textContent = '✅ Pago exacto';
+  }
+
+  // Tabla comparación por grupo
+  const tbody = document.getElementById('comp-tbody');
+  tbody.innerHTML = filas.map((f,i) => {
+    const bg = i%2===0?'#fafaf8':'#fff';
+    const diffStr = f.diff === 0
+      ? '<span style="color:#9b9890;font-family:var(--mono)">—</span>'
+      : f.diff > 0
+        ? `<span style="color:#16a34a;font-weight:600;font-family:var(--mono)">+${fmt(f.diff)}</span>`
+        : `<span style="color:#dc2626;font-weight:600;font-family:var(--mono)">${fmt(f.diff)}</span>`;
+    let pill = '';
+    if (f.diff === 0)  pill = '<span style="background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600">Exacto</span>';
+    else if (f.diff>0) pill = '<span style="background:#eff6ff;color:#1d4ed8;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600">Pagaron más</span>';
+    else               pill = '<span style="background:#fee2e2;color:#b91c1c;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600">Te deben</span>';
+    if (!f.esMio)      pill += ' <span style="background:#fef9c3;color:#854d0e;padding:2px 6px;border-radius:20px;font-size:9px;font-weight:600">Grupo extra</span>';
+    return `<tr style="background:${bg}">
+      <td style="padding:9px 12px;border-bottom:1px solid #e2e0d8;font-size:12px;font-weight:500">${f.grupo}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e2e0d8;text-align:center;font-family:var(--mono);font-size:12px">${f.clases}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e2e0d8;text-align:right;font-family:var(--mono);font-size:12px">${fmt(f.pagado)}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e2e0d8;text-align:right;font-family:var(--mono);font-size:12px;color:#2563eb">${fmt(f.esperado)}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e2e0d8;text-align:right">${diffStr}</td>
+      <td style="padding:9px 12px;border-bottom:1px solid #e2e0d8;text-align:center">${pill}</td>
+    </tr>`;
+  }).join('');
+
+  // Fila de totales
+  const tDiff = totalPagado - totalEsperado;
+  const tDiffStr = tDiff===0
+    ? '<span style="color:#9b9890;font-family:var(--mono)">—</span>'
+    : tDiff>0
+      ? `<span style="color:#16a34a;font-weight:700;font-family:var(--mono)">+${fmt(tDiff)}</span>`
+      : `<span style="color:#dc2626;font-weight:700;font-family:var(--mono)">${fmt(tDiff)}</span>`;
+  tbody.innerHTML += `<tr style="background:#f0efe9;font-weight:600">
+    <td style="padding:9px 12px;border-top:2px solid #ccc9be">TOTAL</td>
+    <td style="padding:9px 12px;border-top:2px solid #ccc9be;text-align:center;font-family:var(--mono)">${reporteData.length}</td>
+    <td style="padding:9px 12px;border-top:2px solid #ccc9be;text-align:right;font-family:var(--mono)">${fmt(totalPagado)}</td>
+    <td style="padding:9px 12px;border-top:2px solid #ccc9be;text-align:right;font-family:var(--mono);color:#2563eb">${fmt(totalEsperado)}</td>
+    <td style="padding:9px 12px;border-top:2px solid #ccc9be;text-align:right">${tDiffStr}</td>
+    <td style="padding:9px 12px;border-top:2px solid #ccc9be"></td>
+  </tr>`;
+
+  // Detalle de clases
+  const detalleTbody = document.getElementById('detalle-tbody');
+  const detalle = [...reporteData].sort((a,b) => b.fecha.localeCompare(a.fecha));
+  detalleTbody.innerHTML = detalle.map((r,i) => {
+    const bg  = i%2===0?'#fafaf8':'#fff';
+    const gLabel = r.esExtra ? '⭐ Extra' : r.grupo;
+    const tipoPill = r.esExtra
+      ? '<span style="background:#fef9c3;color:#854d0e;padding:1px 6px;border-radius:20px;font-size:10px">Extra</span>'
+      : '<span style="background:#eff6ff;color:#1d4ed8;padding:1px 6px;border-radius:20px;font-size:10px">Fija</span>';
+    return `<tr style="background:${bg}">
+      <td style="padding:7px 10px;border-bottom:1px solid #e2e0d8;font-family:var(--mono)">${fmtDate(r.fecha)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e2e0d8;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${gLabel}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e2e0d8;text-align:center;font-family:var(--mono)">${r.mins}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e2e0d8;text-align:right;font-family:var(--mono);color:#16a34a;font-weight:600">${fmt(r.rate)}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e2e0d8;text-align:center">${tipoPill}</td>
+    </tr>`;
+  }).join('');
+}
+
+
+// ══ FUNCIONES DE SINCRONIZACIÓN CON GOOGLE SHEETS ══════════
+
+function setSyncStatus(s, msg) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  if (!dot) return;
+  const map = {
+    idle:    ['#9b9890', msg || 'Sin conectar'],
+    syncing: ['#d97706', 'Sincronizando...'],
+    ok:      ['#16a34a', msg || 'Guardado en Sheets ✓'],
+    error:   ['#dc2626', msg || 'Error al sincronizar']
+  };
+  dot.style.background = map[s][0];
+  lbl.textContent = map[s][1];
+}
+
+async function syncToSheets(action, payload) {
+  if (!SCRIPT_URL) return null;
+  setSyncStatus('syncing');
+  try {
+    const res  = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({action, ...payload}) });
+    const data = await res.json();
+    setSyncStatus(data.status === 'ok' ? 'ok' : 'error', data.message);
+    return data;
+  } catch(e) { setSyncStatus('error'); return null; }
+}
+
+async function syncAll() {
+  if (!SCRIPT_URL) { showSyncModal(); return; }
+  const res = await syncToSheets('syncAll', { clases: records, pagos: (typeof pagos !== 'undefined' ? pagos : []) });
+  if (res) showMsg('msg-sync', res.message || 'Sincronizado', res.status === 'ok' ? 'success' : 'error');
+}
+
+async function testConnection() {
+  const input = document.getElementById('input-script-url');
+  const url   = input ? input.value.trim() : '';
+  if (!url) { showMsg('msg-url', 'Pega la URL del script', 'error'); return; }
+  setSyncStatus('syncing');
+  try {
+    const res  = await fetch(url + '?action=ping');
+    const data = await res.json();
+    if (data.status === 'ok') {
+      SCRIPT_URL = url;
+      localStorage.setItem('scriptUrl', url);
+      setSyncStatus('ok', 'Conexión exitosa ✓');
+      showMsg('msg-url', '¡Conectado a Google Sheets!', 'success');
+      const btnSync = document.getElementById('btn-sync-all');
+      if (btnSync) btnSync.style.display = 'inline-block';
+      setTimeout(() => {
+        closeSyncModal();
+      }, 1500);
+    } else {
+      setSyncStatus('error');
+      showMsg('msg-url', 'El script respondió con error: ' + (data.message || ''), 'error');
+    }
+  } catch(e) {
+    setSyncStatus('error');
+    showMsg('msg-url', 'No se pudo conectar. Asegúrate de que el script esté publicado para "Cualquiera".', 'error');
+  }
+}
+
+function showSyncModal() {
+  const modal = document.getElementById('sync-modal');
+  if (modal) modal.style.display = 'flex';
+  const input = document.getElementById('input-script-url');
+  if (input && SCRIPT_URL) input.value = SCRIPT_URL;
+}
+
+function closeSyncModal() {
+  const modal = document.getElementById('sync-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+// ── Inicializar al cargar ──────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  // Barra de sync siempre visible
+  const bar = document.getElementById('sync-status-bar');
+  if (bar) {
+    bar.style.display = 'flex';
+    if (SCRIPT_URL) {
+      document.getElementById('btn-sync-all').style.display = 'inline-block';
+      setSyncStatus('idle', 'Conectado a Google Sheets');
+    } else {
+      setSyncStatus('idle', 'Sin conectar — toca ⚙ Config');
+    }
+  }
+  // Rellenar input con URL guardada si existe
+  const inputUrl = document.getElementById('input-script-url');
+  if (inputUrl && SCRIPT_URL) inputUrl.value = SCRIPT_URL;
+
+  // Inicializar meses
+  const meses = [...new Set(records.map(r => r.fecha ? r.fecha.slice(0,7) : '').filter(Boolean))].sort().reverse();
+  const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  ['mes-filter'].forEach(sid => {
+    const s = document.getElementById(sid);
+    if (!s) return;
+    while (s.options.length > 1) s.remove(1);
+    meses.forEach(k => {
+      const [y,m] = k.split('-');
+      const o = document.createElement('option');
+      o.value = k; o.textContent = MESES_ES[parseInt(m)-1] + ' ' + y;
+      s.appendChild(o);
+    });
+  });
+});
+
+</script>
+</body>
+</html>
