@@ -392,7 +392,14 @@ const GRUPOS = [
   {id:"PRM_COL_M9939_LU-15", materia:"Math Lvl 3",  mins:40}
 ];
 
+// URL del script — guardada permanentemente en el código
+const SCRIPT_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbz-dgo_Yc5Dk7OjFSWxmecuOYqUDt9ZAKIYRuXhNH9WfaUmnFYT_468gredtZ0S6-4t/exec';
+let SCRIPT_URL = localStorage.getItem('scriptUrl') || SCRIPT_URL_DEFAULT;
+// Siempre asegurarse de que esté guardada
+if (!localStorage.getItem('scriptUrl')) localStorage.setItem('scriptUrl', SCRIPT_URL_DEFAULT);
+
 let records = JSON.parse(localStorage.getItem('clases_v1') || '[]');
+let pagos   = JSON.parse(localStorage.getItem('pagos_v1')  || '[]');
 let activeFilter = 'todos';
 const calState = {
   fijas: {month: new Date().getMonth(), year: new Date().getFullYear()},
