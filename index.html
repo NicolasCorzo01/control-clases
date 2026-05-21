@@ -907,23 +907,70 @@ function closeSyncModal() {
 }
 
 // ── Inicializar al cargar ──────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-  // Barra de sync siempre visible
+document.addEventListener('DOMContentLoaded', async function() {
+  // ── Barra de sync ─────────────────────────────────────
   const bar = document.getElementById('sync-status-bar');
-  if (bar) {
-    bar.style.display = 'flex';
-    if (SCRIPT_URL) {
-      document.getElementById('btn-sync-all').style.display = 'inline-block';
-      setSyncStatus('idle', 'Conectado a Google Sheets');
-    } else {
-      setSyncStatus('idle', 'Sin conectar — toca ⚙ Config');
+  if (bar) bar.style.display = 'flex';
+  const btnSync = document.getElementById('btn-sync-all');
+
+  if (SCRIPT_URL) {
+    if (btnSync) btnSync.style.display = 'inline-block';
+    setSyncStatus('syncing', 'Cargando datos desde Sheets...');
+
+    // ── Cargar clases desde Google Sheets ──────────────
+    try {
+      const [resClases, resPagos] = await Promise.all([
+        fetch(SCRIPT_URL + '?action=getClases'),
+        fetch(SCRIPT_URL + '?action=getPagos')
+      ]);
+      const dataClases = await resClases.json();
+      const dataPagos  = await resPagos.json();
+
+      if (dataClases.status === 'ok' && dataClases.data.length > 0) {
+        // Convertir filas de Sheets al formato interno de la app
+        records = dataClases.data.map(row => ({
+          tipo:    row['Tipo']    || '',
+          fecha:   row['Fecha']  || '',
+          grupoId: row['Tipo'] === 'fija'  ? (row['Grupo / Estudiante'] || '') : '',
+          nombre:  row['Tipo'] === 'extra' ? (row['Grupo / Estudiante'] || '') : '',
+          materia: row['Materia'] || '',
+          mins:    parseInt(row['Minutos']) || 0,
+          valor:   parseInt(row['Valor COP']) || 0,
+          notas:   row['Notas'] || '',
+          ts:      new Date(row['Timestamp'] || Date.now()).getTime()
+        }));
+        localStorage.setItem('clases_v1', JSON.stringify(records));
+      }
+
+      if (dataPagos.status === 'ok' && dataPagos.data.length > 0) {
+        pagos = dataPagos.data.map(row => ({
+          mes:      row['Mes'] || '',
+          gLabel:   row['Grupo / Concepto'] || '',
+          esperado: parseInt(row['Esperado COP']) || 0,
+          monto:    parseInt(row['Recibido COP']) || 0,
+          notas:    row['Notas'] || '',
+          ts:       new Date(row['Timestamp'] || Date.now()).getTime()
+        }));
+        localStorage.setItem('pagos_v1', JSON.stringify(pagos));
+      }
+
+      setSyncStatus('ok', `Datos cargados ✓ (${records.length} clases)`);
+      setTimeout(() => setSyncStatus('idle', 'Conectado a Google Sheets'), 3000);
+
+    } catch(e) {
+      // Si falla la carga remota, usar datos locales
+      setSyncStatus('idle', 'Usando datos locales');
     }
+
+  } else {
+    setSyncStatus('idle', 'Sin conectar — toca ⚙ Config');
   }
-  // Rellenar input con URL guardada si existe
+
+  // Rellenar input con URL guardada
   const inputUrl = document.getElementById('input-script-url');
   if (inputUrl && SCRIPT_URL) inputUrl.value = SCRIPT_URL;
 
-  // Inicializar meses
+  // Inicializar selects de meses
   const meses = [...new Set(records.map(r => r.fecha ? r.fecha.slice(0,7) : '').filter(Boolean))].sort().reverse();
   const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   ['mes-filter'].forEach(sid => {
