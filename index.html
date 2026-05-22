@@ -164,6 +164,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--txt);font-size:14p
     <button class="tab" onclick="switchTab('historial')">Historial</button>
     <button class="tab" onclick="switchTab('pagos')">💰 Pagos</button>
     <button class="tab" onclick="switchTab('exportar')">Exportar</button>
+    <button class="tab" onclick="switchTab('config')">⚙️ Grupos</button>
   </div>
 
   <!-- ══ FIJAS ══ -->
@@ -180,11 +181,13 @@ body{font-family:var(--font);background:var(--bg);color:var(--txt);font-size:14p
           <div class="calendar-popup" id="cal-fijas"></div>
           <input type="hidden" id="fecha-fija">
         </div>
-        <div class="field">
+        <div class="field" style="position:relative">
           <label>Grupo</label>
-          <select id="grupo-select" onchange="updateGrupoInfo()">
-            <option value="">— Selecciona grupo —</option>
-          </select>
+          <input type="text" id="grupo-search" placeholder="Buscar grupo..." autocomplete="off"
+            oninput="filtrarGrupos()" onfocus="abrirDropdown()" onkeydown="navDropdown(event)"
+            style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font);font-size:13px;outline:none">
+          <div id="grupo-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:500;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:220px;overflow-y:auto;margin-top:2px"></div>
+          <input type="hidden" id="grupo-select">
         </div>
       </div>
       <div class="form-row triple" id="grupo-info" style="display:none">
@@ -371,6 +374,38 @@ body{font-family:var(--font);background:var(--bg);color:var(--txt);font-size:14p
       <div class="msg" id="msg-export"></div>
     </div>
   </div>
+  <!-- ══ CONFIG GRUPOS ══ -->
+  <div class="panel" id="panel-config">
+    <div class="card">
+      <div class="card-title">Agregar nuevo grupo</div>
+      <div class="form-row triple">
+        <div class="field">
+          <label>ID / Nombre del grupo</label>
+          <input type="text" id="ng-id" placeholder="Ej: COL999_IND">
+        </div>
+        <div class="field">
+          <label>Materia</label>
+          <input type="text" id="ng-materia" placeholder="Ej: Scratch">
+        </div>
+        <div class="field">
+          <label>Duración (minutos)</label>
+          <input type="number" id="ng-mins" placeholder="Ej: 60" min="1">
+        </div>
+      </div>
+      <div id="ng-valor-preview" style="display:none;margin-bottom:8px" class="valor-preview">
+        <span class="valor-label">Valor por sesión</span>
+        <span class="valor-amount" id="ng-valor">$0</span>
+      </div>
+      <button class="btn-primary" onclick="agregarGrupo()" style="margin-top:8px">+ Agregar grupo</button>
+      <div class="msg" id="msg-config"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Grupos activos (<span id="total-grupos">0</span>)</div>
+      <div id="grupos-lista"></div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -410,14 +445,102 @@ function save() { localStorage.setItem('clases_v1', JSON.stringify(records)); }
 function fmt(v) { return '$' + Math.round(v).toLocaleString('es-CO'); }
 function fmtDate(iso) { if (!iso) return ''; const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; }
 
-// Llenar select de grupos
-const sel = document.getElementById('grupo-select');
-GRUPOS.forEach(g => {
-  const o = document.createElement('option');
-  o.value = g.id;
-  const tag = g.mins === 60 ? '60min' : g.mins === 30 ? '30min' : '40min';
-  o.textContent = `[${tag}] ${g.id} — ${g.materia}`;
-  sel.appendChild(o);
+// ── Grupos dinámicos ────────────────────────────────────────
+// Cargar desde localStorage o usar predefinidos
+const GRUPOS_DEFAULT = JSON.parse(JSON.stringify(GRUPOS));
+let GRUPOS_DIN = JSON.parse(localStorage.getItem('grupos_v1') || JSON.stringify(GRUPOS_DEFAULT));
+// Sobreescribir GRUPOS con la versión dinámica
+GRUPOS.length = 0;
+GRUPOS_DIN.forEach(g => GRUPOS.push(g));
+function saveGrupos() { localStorage.setItem('grupos_v1', JSON.stringify(GRUPOS)); }
+
+// Llenar select de pagos
+function llenarSelectPagos() {
+  const s = document.getElementById('pago-grupo');
+  if (!s) return;
+  while (s.options.length > 2) s.remove(2);
+  GRUPOS.forEach(g => {
+    const o = document.createElement('option');
+    o.value = g.id;
+    const tag = g.mins===60?'60min':g.mins===30?'30min':'40min';
+    o.textContent = '['+tag+'] '+g.id+' — '+g.materia;
+    s.appendChild(o);
+  });
+}
+llenarSelectPagos();
+
+// ── Buscador de grupos con dropdown ─────────────────────────
+let dropdownIdx = -1;
+
+function filtrarGrupos() {
+  const q = (document.getElementById('grupo-search').value || '').toLowerCase();
+  const filtrados = GRUPOS.filter(g => g.id.toLowerCase().includes(q) || g.materia.toLowerCase().includes(q));
+  renderDropdown(filtrados);
+}
+
+function abrirDropdown() {
+  const q = (document.getElementById('grupo-search').value || '').toLowerCase();
+  const filtrados = q ? GRUPOS.filter(g => g.id.toLowerCase().includes(q) || g.materia.toLowerCase().includes(q)) : GRUPOS;
+  renderDropdown(filtrados);
+}
+
+function renderDropdown(lista) {
+  const dd = document.getElementById('grupo-dropdown');
+  if (!dd) return;
+  dropdownIdx = -1;
+  if (!lista.length) {
+    dd.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--txt3)">Sin resultados</div>';
+    dd.style.display = 'block'; return;
+  }
+  dd.innerHTML = lista.map(g => {
+    const tag = g.mins===60?'60min':g.mins===30?'30min':'40min';
+    const color = g.mins===60?'#1d4ed8':g.mins===30?'#15803d':'#b45309';
+    return '<div class="grupo-opt" data-id="'+g.id+'"'
+      +' onclick="seleccionarGrupo(''+g.id+'')"'
+      +' style="padding:9px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"'
+      +' onmouseover="this.style.background='var(--surface2)'"'
+      +' onmouseout="this.style.background=''">'
+      +'<span style="font-weight:500">'+g.id+'</span>'
+      +'<span style="color:'+color+';font-size:11px">'+tag+' · '+g.materia+'</span>'
+      +'</div>';
+  }).join('');
+  dd.style.display = 'block';
+}
+
+function navDropdown(e) {
+  const dd = document.getElementById('grupo-dropdown');
+  const opts = dd ? dd.querySelectorAll('.grupo-opt') : [];
+  if (!opts.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    dropdownIdx = Math.min(dropdownIdx+1, opts.length-1);
+    opts.forEach((o,i) => o.style.background = i===dropdownIdx?'var(--surface2)':'');
+    opts[dropdownIdx].scrollIntoView({block:'nearest'});
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    dropdownIdx = Math.max(dropdownIdx-1, 0);
+    opts.forEach((o,i) => o.style.background = i===dropdownIdx?'var(--surface2)':'');
+    opts[dropdownIdx].scrollIntoView({block:'nearest'});
+  } else if (e.key === 'Enter' && dropdownIdx >= 0) {
+    e.preventDefault();
+    seleccionarGrupo(opts[dropdownIdx].getAttribute('data-id'));
+  } else if (e.key === 'Escape') {
+    document.getElementById('grupo-dropdown').style.display = 'none';
+  }
+}
+
+function seleccionarGrupo(id) {
+  const g = GRUPOS.find(x => x.id === id);
+  if (!g) return;
+  document.getElementById('grupo-search').value = g.id+' — '+g.materia;
+  document.getElementById('grupo-select').value = id;
+  document.getElementById('grupo-dropdown').style.display = 'none';
+  updateGrupoInfo();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('[id="grupo-search"]') && !e.target.closest('[id="grupo-dropdown"]'))
+    { const dd=document.getElementById('grupo-dropdown'); if(dd) dd.style.display='none'; }
 });
 
 // Inicializar valor extra
@@ -528,6 +651,7 @@ function guardarFija() {
   const dd = document.getElementById('dd-fijas');
   dd.textContent = 'Seleccionar fecha...'; dd.classList.add('empty');
   document.getElementById('grupo-select').value = '';
+  const gs=document.getElementById('grupo-search'); if(gs) gs.value='';
   document.getElementById('grupo-info').style.display = 'none';
   document.getElementById('valor-preview').style.display = 'none';
 }
@@ -913,6 +1037,71 @@ function closeSyncModal() {
   if (modal) modal.style.display = 'none';
 }
 
+// ══ GESTIÓN DE GRUPOS (pestaña ⚙️ Grupos) ══════════════════
+
+document.addEventListener('input', function(e) {
+  if (e.target.id === 'ng-mins') {
+    const mins = parseFloat(e.target.value) || 0;
+    const prev = document.getElementById('ng-valor-preview');
+    const val  = document.getElementById('ng-valor');
+    if (prev && val) {
+      prev.style.display = mins > 0 ? 'flex' : 'none';
+      val.textContent = fmt(mins * VALOR_MIN);
+    }
+  }
+});
+
+function agregarGrupo() {
+  const id   = (document.getElementById('ng-id').value || '').trim();
+  const mat  = (document.getElementById('ng-materia').value || '').trim();
+  const mins = parseInt(document.getElementById('ng-mins').value) || 0;
+  if (!id)   { showMsg('msg-config','Ingresa el ID del grupo','error'); return; }
+  if (!mat)  { showMsg('msg-config','Ingresa la materia','error'); return; }
+  if (!mins) { showMsg('msg-config','Ingresa la duración en minutos','error'); return; }
+  if (GRUPOS.find(g => g.id === id)) { showMsg('msg-config','Ese ID ya existe','error'); return; }
+  GRUPOS.push({ id, materia: mat, mins });
+  saveGrupos();
+  llenarSelectPagos();
+  renderGruposLista();
+  document.getElementById('ng-id').value = '';
+  document.getElementById('ng-materia').value = '';
+  document.getElementById('ng-mins').value = '';
+  const prev = document.getElementById('ng-valor-preview');
+  if (prev) prev.style.display = 'none';
+  showMsg('msg-config','Grupo "'+id+'" agregado ✓','success');
+}
+
+function eliminarGrupo(id) {
+  if (!confirm('¿Eliminar el grupo "'+id+'"? Las clases ya registradas no se borran.')) return;
+  const idx = GRUPOS.findIndex(g => g.id === id);
+  if (idx >= 0) { GRUPOS.splice(idx, 1); saveGrupos(); }
+  llenarSelectPagos();
+  renderGruposLista();
+  showMsg('msg-config','Grupo eliminado ✓','success');
+}
+
+function renderGruposLista() {
+  const lista = document.getElementById('grupos-lista');
+  const total = document.getElementById('total-grupos');
+  if (!lista) return;
+  if (total) total.textContent = GRUPOS.length;
+  if (!GRUPOS.length) {
+    lista.innerHTML = '<div class="empty-state"><div class="ei">📋</div><p>Sin grupos activos</p></div>';
+    return;
+  }
+  lista.innerHTML = '<div class="records-list">' + GRUPOS.map(g => {
+    const tag   = g.mins===60?'🔵 60min':g.mins===30?'🟢 30min':'🟠 40min';
+    const valor = fmt(Math.round(g.mins * VALOR_MIN));
+    return '<div class="record-item">'
+      +'<div class="record-info">'
+      +'<div class="record-name">'+g.id+'</div>'
+      +'<div class="record-meta">'+tag+' · '+g.materia+' · '+valor+' por sesión</div>'
+      +'</div>'
+      +'<button class="record-del" onclick="eliminarGrupo(''+g.id+'')" title="Eliminar">✕</button>'
+      +'</div>';
+  }).join('') + '</div>';
+}
+
 // ── Inicializar al cargar ──────────────────────────────────
 document.addEventListener('DOMContentLoaded', async function() {
   // ── Barra de sync ─────────────────────────────────────
@@ -976,6 +1165,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Rellenar input con URL guardada
   const inputUrl = document.getElementById('input-script-url');
   if (inputUrl && SCRIPT_URL) inputUrl.value = SCRIPT_URL;
+  renderGruposLista();
 
   // Inicializar selects de meses
   const meses = [...new Set(records.map(r => r.fecha ? r.fecha.slice(0,7) : '').filter(Boolean))].sort().reverse();
