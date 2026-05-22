@@ -488,22 +488,35 @@ function renderDropdown(lista) {
   const dd = document.getElementById('grupo-dropdown');
   if (!dd) return;
   dropdownIdx = -1;
+  dd.innerHTML = '';
   if (!lista.length) {
-    dd.innerHTML = '<div style="padding:10px 12px;font-size:12px;color:var(--txt3)">Sin resultados</div>';
-    dd.style.display = 'block'; return;
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:10px 12px;font-size:12px;color:var(--txt3)';
+    empty.textContent = 'Sin resultados';
+    dd.appendChild(empty);
+    dd.style.display = 'block';
+    return;
   }
-  dd.innerHTML = lista.map(g => {
-    const tag = g.mins===60?'60min':g.mins===30?'30min':'40min';
-    const color = g.mins===60?'#1d4ed8':g.mins===30?'#15803d':'#b45309';
-    return '<div class="grupo-opt" data-id="'+g.id+'"'
-      +' onclick="seleccionarGrupo(''+g.id+'')"'
-      +' style="padding:9px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"'
-      +' onmouseover="this.style.background='var(--surface2)'"'
-      +' onmouseout="this.style.background=''">'
-      +'<span style="font-weight:500">'+g.id+'</span>'
-      +'<span style="color:'+color+';font-size:11px">'+tag+' · '+g.materia+'</span>'
-      +'</div>';
-  }).join('');
+  lista.forEach(function(g) {
+    const tag   = g.mins === 60 ? '60min' : g.mins === 30 ? '30min' : '40min';
+    const color = g.mins === 60 ? '#1d4ed8' : g.mins === 30 ? '#15803d' : '#b45309';
+    const div = document.createElement('div');
+    div.className = 'grupo-opt';
+    div.dataset.id = g.id;
+    div.style.cssText = 'padding:9px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center';
+    const left = document.createElement('span');
+    left.style.fontWeight = '500';
+    left.textContent = g.id;
+    const right = document.createElement('span');
+    right.style.cssText = 'color:' + color + ';font-size:11px';
+    right.textContent = tag + ' · ' + g.materia;
+    div.appendChild(left);
+    div.appendChild(right);
+    div.addEventListener('click', function() { seleccionarGrupo(g.id); });
+    div.addEventListener('mouseover', function() { this.style.background = 'var(--surface2)'; });
+    div.addEventListener('mouseout',  function() { this.style.background = ''; });
+    dd.appendChild(div);
+  });
   dd.style.display = 'block';
 }
 
@@ -1085,21 +1098,31 @@ function renderGruposLista() {
   const total = document.getElementById('total-grupos');
   if (!lista) return;
   if (total) total.textContent = GRUPOS.length;
+  lista.innerHTML = '';
   if (!GRUPOS.length) {
-    lista.innerHTML = '<div class="empty-state"><div class="ei">📋</div><p>Sin grupos activos</p></div>';
+    lista.innerHTML = '<div class="empty-state"><div class="ei">&#128203;</div><p>Sin grupos activos</p></div>';
     return;
   }
-  lista.innerHTML = '<div class="records-list">' + GRUPOS.map(g => {
-    const tag   = g.mins===60?'🔵 60min':g.mins===30?'🟢 30min':'🟠 40min';
+  const wrap = document.createElement('div');
+  wrap.className = 'records-list';
+  GRUPOS.forEach(function(g) {
+    const tag   = g.mins===60 ? '&#128309; 60min' : g.mins===30 ? '&#128994; 30min' : '&#128992; 40min';
     const valor = fmt(Math.round(g.mins * VALOR_MIN));
-    return '<div class="record-item">'
-      +'<div class="record-info">'
-      +'<div class="record-name">'+g.id+'</div>'
-      +'<div class="record-meta">'+tag+' · '+g.materia+' · '+valor+' por sesión</div>'
-      +'</div>'
-      +'<button class="record-del" onclick="eliminarGrupo(''+g.id+'')" title="Eliminar">✕</button>'
-      +'</div>';
-  }).join('') + '</div>';
+    const item  = document.createElement('div');
+    item.className = 'record-item';
+    item.innerHTML = '<div class="record-info">'
+      + '<div class="record-name">' + g.id + '</div>'
+      + '<div class="record-meta">' + tag + ' &middot; ' + g.materia + ' &middot; ' + valor + ' por sesi&oacute;n</div>'
+      + '</div>';
+    const btn = document.createElement('button');
+    btn.className = 'record-del';
+    btn.title = 'Eliminar';
+    btn.textContent = '✕';
+    btn.addEventListener('click', function() { eliminarGrupo(g.id); });
+    item.appendChild(btn);
+    wrap.appendChild(item);
+  });
+  lista.appendChild(wrap);
 }
 
 // ── Inicializar al cargar ──────────────────────────────────
